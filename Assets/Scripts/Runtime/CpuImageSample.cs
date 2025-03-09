@@ -1,8 +1,14 @@
 using System;
+using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.XR.ARSubsystems;
+using System.IO;
+using Unity.XR.CoreUtils;
+using System.Linq;
 
 namespace UnityEngine.XR.ARFoundation.Samples
 {
@@ -26,6 +32,34 @@ namespace UnityEngine.XR.ARFoundation.Samples
         [SerializeField]
         [Tooltip("The ARCameraManager which will produce frame events.")]
         ARCameraManager m_CameraManager;
+
+        [SerializeField]
+        [Tooltip("The Camera which will produce AR-inclusive frames")]
+        public Camera arCaptureCamera;
+
+        [SerializeField]
+        [Tooltip("The Camera which will produce raw image frames")]
+        public Camera rawCaptureCamera;
+
+        [SerializeField]
+        [Tooltip("The main Directional Light for HDR Lighting Estimation")]
+        public Light m_Light;
+
+        [SerializeField]
+        [Tooltip("Parent Model in Hierarchy of models to display")]
+        public GameObject modelsParent;
+
+        [SerializeField]
+        public GameObject xrOrigin;
+
+        [SerializeField]
+        public AlphaController alphaController;
+
+        public bool useLightingEstimation = true;
+
+        public Vector3? mainLightDirection { get; private set; }
+        public RenderTexture renderTexture;
+
 
         [SerializeField]
         [Tooltip("The AROcclusionManager which will produce human depth and stencil textures.")]
@@ -137,6 +171,255 @@ namespace UnityEngine.XR.ARFoundation.Samples
             }
         }
 
+        public void SetLightingToggle(bool value) { useLightingEstimation = value; }
+
+        private GameObject GetActiveObject()
+        {
+            foreach(Transform child in modelsParent.transform)
+            {
+                if (child.gameObject.activeSelf)
+                {
+                    return child.gameObject;
+                }
+            }
+            return null;
+        }
+
+        unsafe public void CaptureImage()
+        {
+            //string cur_time = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss");
+            
+            Vector3 originPos = xrOrigin.transform.position;
+            Vector3 cameraPos = arCaptureCamera.transform.localPosition;
+            Quaternion cameraRot = arCaptureCamera.transform.rotation;
+            GameObject activeObject = GetActiveObject();
+
+            CaptureRawImage(activeObject.name);
+            CaptureARImage(activeObject.name);
+            SaveDepthTexture(activeObject.name);
+
+            // Save Render Settings into JSON
+            RenderSettingsData settings = new RenderSettingsData
+            {
+                objectName = activeObject.name,
+                sessionOriginPos = originPos,
+                cameraPos = cameraPos,
+                cameraRot = cameraRot,
+                opacity = alphaController.alphaSlider.value,
+                resolution = m_CameraManager.currentConfiguration.ToString(),
+                virtualLightDirection = m_Light.transform.rotation,
+                realLightDirection = Quaternion.LookRotation(mainLightDirection.Value),
+                shadowIntensity = m_Light.shadowStrength,
+                brightness = m_Light.intensity,
+            };
+            settings.SaveRenderSettings(activeObject.name);
+
+            //TODO: save transparency, scale, camera pose, 
+            /*
+            try
+            {
+                var acceleration = Accelerometer.current.acceleration.ReadValue();
+                var angularVelocity = UnityEngine.InputSystem.Gyroscope.current.angularVelocity.ReadValue();
+                var magneticField = MagneticFieldSensor.current.magneticField.ReadValue();
+            }
+            catch { }
+            */
+        }
+
+        private void CaptureRawImage(string objectName)
+        {
+            rawCaptureCamera.targetTexture = renderTexture;
+            rawCaptureCamera.Render();
+
+            Texture2D screenTexture = new Texture2D(renderTexture.width, renderTexture.height, TextureFormat.ARGB32, false);
+            RenderTexture.active = renderTexture;
+            screenTexture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
+            screenTexture.Apply();
+
+            // Save the image
+            //string path = Path.Combine(Application.persistentDataPath, $"../files/raw_images/{objectName}_raw.png");
+            string directoryPath = Path.Combine(Application.persistentDataPath, "../files/raw_images/");
+            if (!Directory.Exists(Path.GetDirectoryName(directoryPath)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(directoryPath));
+            }
+            // Get all matching files and find the highest index
+            int newIndex = Directory.GetFiles(directoryPath, $"{objectName}_*_raw.png")
+                .Select(f => Path.GetFileNameWithoutExtension(f).Split('_'))
+                .Where(parts => parts.Length >= 3 && int.TryParse(parts[1], out _))
+                .Select(parts => int.Parse(parts[1]))
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+            string filePath = Path.Combine(directoryPath, $"{objectName}_{newIndex}_raw.png");
+
+            File.WriteAllBytes(filePath, screenTexture.EncodeToPNG());
+            Debug.Log($"Raw scene image saved at: {filePath}");
+
+            arCaptureCamera.targetTexture = null;
+            RenderTexture.active = null;
+        }
+
+        private void CaptureARImage(string objectName)
+        {
+            arCaptureCamera.targetTexture = renderTexture;
+            arCaptureCamera.Render();
+
+            Texture2D screenTexture = new Texture2D(renderTexture.width, renderTexture.height, TextureFormat.ARGB32, false);
+            RenderTexture.active = renderTexture;
+            screenTexture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
+            screenTexture.Apply();
+
+            // Save the image
+            //string path = Path.Combine(Application.persistentDataPath, $"../files/ar_images/ar_image_{cur_time}.png");
+            string directoryPath = Path.Combine(Application.persistentDataPath, "../files/ar_images/");
+            if (!Directory.Exists(Path.GetDirectoryName(directoryPath)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(directoryPath));
+            }
+            // Get all matching files and find the highest index
+            int newIndex = Directory.GetFiles(directoryPath, $"{objectName}_*_ar.png")
+                .Select(f => Path.GetFileNameWithoutExtension(f).Split('_'))
+                .Where(parts => parts.Length >= 3 && int.TryParse(parts[1], out _))
+                .Select(parts => int.Parse(parts[1]))
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+            string filePath = Path.Combine(directoryPath, $"{objectName}_{newIndex}_ar.png");
+
+            File.WriteAllBytes(filePath, screenTexture.EncodeToPNG());
+            Debug.Log($"AR scene image saved at: {filePath}");
+
+            arCaptureCamera.targetTexture = null;
+            RenderTexture.active = null;
+
+            // save render settings here;
+
+        }
+
+        private void _CaptureRawImage(string cur_time)
+        {
+            if (!m_CameraManager.TryAcquireLatestCpuImage(out XRCpuImage image))
+                return;
+
+            var conversionParams = new XRCpuImage.ConversionParams(image, TextureFormat.RGBA32, m_Transformation);
+            var texture = new Texture2D(image.width, image.height);
+            var rawTextureData = texture.GetRawTextureData<byte>();
+            try
+            {
+                unsafe
+                {
+                    image.Convert(
+                        conversionParams,
+                        new IntPtr(rawTextureData.GetUnsafePtr()),
+                        rawTextureData.Length
+                    );
+                }
+            }
+            finally
+            {
+                image.Dispose();
+            }
+            texture.Apply();
+            byte[] bytes = ImageConversion.EncodeToPNG(texture);
+            string filePath = Path.Combine(Application.persistentDataPath, $"../files/raw_image_{cur_time}.png");
+            if (!Directory.Exists(Path.GetDirectoryName(filePath)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+            }
+            try
+            {
+                File.WriteAllBytes(filePath, bytes);
+                Debug.Log("Saved data to: " + filePath);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Failed to save data to: " + filePath);
+                Debug.LogWarning(e);
+            }
+        }
+
+        void SaveDepthTexture(string cur_time)
+        {
+            if (m_OcclusionManager == null || m_OcclusionManager.environmentDepthTexture == null)
+            {
+                Debug.LogError("No environment depth texture available to save.");
+                return;
+            }
+
+            // Get the depth texture
+            Texture2D depthTexture = m_OcclusionManager.environmentDepthTexture;
+
+            // Create a new Texture2D with same dimensions and format
+            RenderTexture renderTexture = RenderTexture.GetTemporary(depthTexture.width, depthTexture.height, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(depthTexture, renderTexture);
+
+            Texture2D readableTexture = new Texture2D(depthTexture.width, depthTexture.height, TextureFormat.RGBA32, false);
+            RenderTexture.active = renderTexture;
+            readableTexture.ReadPixels(new Rect(0, 0, depthTexture.width, depthTexture.height), 0, 0);
+            readableTexture.Apply();
+
+            // Convert to PNG
+            byte[] pngData = readableTexture.EncodeToPNG();
+            if (pngData != null)
+            {
+                string filePath = Path.Combine(Application.persistentDataPath, $"../files/depth_textures/depth_texture_{cur_time}.png");
+                if (!Directory.Exists(Path.GetDirectoryName(filePath)))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                }
+                System.IO.File.WriteAllBytes(filePath, pngData);
+                Debug.Log($"Depth texture saved at: {filePath}");
+            }
+
+            // Cleanup
+            RenderTexture.active = null;
+            RenderTexture.ReleaseTemporary(renderTexture);
+            Destroy(readableTexture);
+        }
+
+
+        /* //don't use this function 
+        unsafe void CaptureDepthImage(string cur_time)
+        {
+            if (!m_OcclusionManager.TryAcquireRawEnvironmentDepthCpuImage(out XRCpuImage image))
+                return;
+
+            var conversionParams = new XRCpuImage.ConversionParams(image, TextureFormat.RGBA32, m_Transformation);
+            var texture = new Texture2D(image.width, image.height);
+            var rawTextureData = texture.GetRawTextureData<byte>();
+            try
+            {
+                unsafe
+                {
+                    image.Convert(
+                        conversionParams,
+                        new IntPtr(rawTextureData.GetUnsafePtr()),
+                        rawTextureData.Length
+                    );
+                }
+            }
+            finally
+            {
+                image.Dispose();
+            }
+            texture.Apply();
+            byte[] bytes = ImageConversion.EncodeToPNG(texture);
+            string filePath = Path.Combine(Application.persistentDataPath, $"../files/depth_image_{cur_time}.png");
+            if (!Directory.Exists(Path.GetDirectoryName(filePath)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+            }
+            try
+            {
+                File.WriteAllBytes(filePath, bytes);
+                Debug.Log("Saved data to: " + filePath);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Failed to save data to: " + filePath);
+                Debug.LogWarning(e);
+            }
+        }
+        */
         void OnEnable()
         {
             if (m_CameraManager == null)
@@ -147,6 +430,19 @@ namespace UnityEngine.XR.ARFoundation.Samples
             }
 
             m_CameraManager.frameReceived += OnCameraFrameReceived;
+
+            // Dynamically adjust rendertexture settings
+            var config = m_CameraManager.currentConfiguration;
+            if (config.HasValue)
+            {
+                int width = config.Value.width;
+                int height = config.Value.height;
+                renderTexture = new RenderTexture(width, height, 16, RenderTextureFormat.ARGB32);
+            }
+            else
+            {
+                renderTexture = new RenderTexture(1080, 1920, 16, RenderTextureFormat.ARGB32); // Default fallback
+            }
         }
 
         void OnDisable()
@@ -158,10 +454,20 @@ namespace UnityEngine.XR.ARFoundation.Samples
         void OnCameraFrameReceived(ARCameraFrameEventArgs eventArgs)
         {
             UpdateCameraImage();
-            UpdateDepthImage(m_OcclusionManager.TryAcquireHumanDepthCpuImage, m_RawHumanDepthImage);
-            UpdateDepthImage(m_OcclusionManager.TryAcquireHumanStencilCpuImage, m_RawHumanStencilImage);
-            UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthCpuImage, m_RawEnvironmentDepthImage);
-            UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthConfidenceCpuImage, m_RawEnvironmentDepthConfidenceImage);
+            // add a toggle that sets light direction to estimated light or uses default light...
+            if (eventArgs.lightEstimation.mainLightDirection.HasValue)
+            {
+                mainLightDirection = eventArgs.lightEstimation.mainLightDirection;
+                if (useLightingEstimation)
+                {
+                    m_Light.transform.rotation = Quaternion.LookRotation(mainLightDirection.Value);
+                }
+            }
+
+            //UpdateDepthImage(m_OcclusionManager.TryAcquireHumanDepthCpuImage, m_RawHumanDepthImage);
+            //UpdateDepthImage(m_OcclusionManager.TryAcquireHumanStencilCpuImage, m_RawHumanStencilImage);
+            //UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthCpuImage, m_RawEnvironmentDepthImage);
+            //UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthConfidenceCpuImage, m_RawEnvironmentDepthConfidenceImage);
         }
 
         unsafe void UpdateCameraImage()

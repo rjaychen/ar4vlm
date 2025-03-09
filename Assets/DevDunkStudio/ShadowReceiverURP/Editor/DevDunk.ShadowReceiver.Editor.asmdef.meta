@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 499193ca9d414d84eb4a1fd48f0d751c
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 228074
+  packageName: Shadow Receiver URP (FREE)
+  packageVersion: 3.1.0
+  assetPath: Assets/DevDunkStudio/ShadowReceiverURP/Editor/DevDunk.ShadowReceiver.Editor.asmdef
+  uploadId: 652285

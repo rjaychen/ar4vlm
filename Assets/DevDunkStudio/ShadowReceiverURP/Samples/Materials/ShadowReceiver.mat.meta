@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e18a21f2c7ffae44b89ce31f6d1d6d47
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 228074
+  packageName: Shadow Receiver URP (FREE)
+  packageVersion: 3.1.0
+  assetPath: Assets/DevDunkStudio/ShadowReceiverURP/Samples/Materials/ShadowReceiver.mat
+  uploadId: 652285

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: ed932225d2f48824fa13309ccc776ff4
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 228074
+  packageName: Shadow Receiver URP (FREE)
+  packageVersion: 3.1.0
+  assetPath: Assets/DevDunkStudio/ShadowReceiverURP/Built In Render Pipeline/BiRP
+    support.txt
+  uploadId: 652285

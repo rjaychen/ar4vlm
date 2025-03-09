@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 09e325eedba7e774a9849f3392b128a3
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 228074
+  packageName: Shadow Receiver URP (FREE)
+  packageVersion: 3.1.0
+  assetPath: Assets/DevDunkStudio/ShadowReceiverURP/Editor/SettingsChecker.cs
+  uploadId: 652285
