@@ -466,7 +466,7 @@ namespace UnityEngine.XR.ARFoundation.Samples
 
             //UpdateDepthImage(m_OcclusionManager.TryAcquireHumanDepthCpuImage, m_RawHumanDepthImage);
             //UpdateDepthImage(m_OcclusionManager.TryAcquireHumanStencilCpuImage, m_RawHumanStencilImage);
-            //UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthCpuImage, m_RawEnvironmentDepthImage);
+            UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthCpuImage, m_RawEnvironmentDepthImage);
             //UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthConfidenceCpuImage, m_RawEnvironmentDepthConfidenceImage);
         }
 

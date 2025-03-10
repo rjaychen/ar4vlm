@@ -8,6 +8,8 @@
 Assets/AssetStoreTools*
 Packages/packages-lock.json
 Assets/Imported Models/
+Assets/TurboSquid_Models/
+Assets/TurboSquid_Models.meta
 
 # Visual Studio 2015 cache directory
 /.vs/

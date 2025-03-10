@@ -16,6 +16,7 @@ public class AlphaController : MonoBehaviour
 
             // Set initial slider value based on material's alpha
             targetRenderer = FindRendererWithMaterial(targetObject);
+            print(targetRenderer.name);
             if (targetRenderer != null)
             {
                 targetMaterial = targetRenderer.material;
