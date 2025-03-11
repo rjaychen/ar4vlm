@@ -44,7 +44,7 @@ public class ObjectSelector : MonoBehaviour
                 gameObjects[i].SetActive(i == active); // only init if active index of dropdown
             }
             alphaController.targetObject = gameObjects[active];
-            alphaController.targetRenderer = alphaController.FindRendererWithMaterial(alphaController.targetObject);
+            Debug.Log($"switched to: {gameObjects[active].name}");
         }
     }
 }

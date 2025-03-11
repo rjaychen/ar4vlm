@@ -5,8 +5,6 @@ public class AlphaController : MonoBehaviour
 {
     //public Material targetMaterial; // Assign the material in Inspector
     public GameObject targetObject;
-    public Renderer targetRenderer;
-    private Material targetMaterial;
     public Slider alphaSlider; // Assign the UI Slider in Inspector
 
     private void Start()
@@ -15,12 +13,10 @@ public class AlphaController : MonoBehaviour
         {
 
             // Set initial slider value based on material's alpha
-            targetRenderer = FindRendererWithMaterial(targetObject);
-            print(targetRenderer.name);
+            Renderer targetRenderer = targetObject.GetComponent<Renderer>();
             if (targetRenderer != null)
             {
-                targetMaterial = targetRenderer.material;
-                alphaSlider.value = targetMaterial.color.a; //targetMaterial.color.a;
+                alphaSlider.value = targetRenderer.material.color.a; //targetMaterial.color.a;
                 alphaSlider.onValueChanged.AddListener(UpdateAlpha); // Listen for slider changes
             }
             else
@@ -32,16 +28,27 @@ public class AlphaController : MonoBehaviour
 
     void UpdateAlpha(float value)
     {
-        Debug.Log($"targetMaterial: {targetMaterial.name}");
+        //Debug.Log($"targetMaterial: {targetMaterial.name}");
         try
         {
-            targetMaterial.SetAlpha(value);
+            Renderer[] renderers = targetObject.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+                Debug.LogWarning("No renderers found on object");
+            foreach (Renderer renderer in renderers)
+            {
+                renderer.material = new Material(renderer.sharedMaterial);
+                renderer.material.ConvertToTransparent();
+                renderer.material.SetAlpha(value);
+            }
+            
         }
         catch {
             Debug.Log("target object is null: AlphaController");
         }
     }
 
+    
+    /*
     public Renderer FindRendererWithMaterial(GameObject obj)
     {
         // Check if this object has a Renderer
@@ -62,7 +69,7 @@ public class AlphaController : MonoBehaviour
         }
 
         return null;
-    }
+    }*/
 
 }
 
@@ -70,13 +77,29 @@ public class AlphaController : MonoBehaviour
 
 public static class ExtensionMethods
 {
+    public static void ConvertToTransparent(this Material material)
+    {
+        if (material == null) return;
+        // Set the material to Transparent mode
+        material.SetFloat("_Surface", 1); // 0 = Opaque, 1 = Transparent
+        material.SetFloat("_Mode", 3); // 3 = Transparent in Standard Shader
+        material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        material.SetInt("_ZWrite", 0); // Disable depth writing for transparency
+        material.DisableKeyword("_ALPHATEST_ON");
+        material.EnableKeyword("_ALPHABLEND_ON");
+        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        material.renderQueue = 3000; // Renders after opaque objects
 
+        Debug.Log($"Material {material.name} converted to Transparent mode.");
+    }
     public static void SetAlpha(this Material material, float value)
     {
         Color color = material.color;
-        color.a = value;
+        color.a = Mathf.Clamp(value, 0, 1);
+        material.color = color;
         //material.SetColor("_Color", color);
-        material.SetColor("_BaseColor", color);
+        //material.SetColor("_BaseColor", color);
     }
 
 }

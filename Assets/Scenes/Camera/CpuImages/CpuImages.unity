@@ -2134,12 +2134,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 769074437}
   m_PrefabAsset: {fileID: 0}
---- !u!23 &503428101 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: -2823010581601853844, guid: a681f8adfb1a733488881c4b1fb4dfff,
-    type: 3}
-  m_PrefabInstance: {fileID: 769074437}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &573861153
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3776,6 +3770,11 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -2823010581601853844, guid: a681f8adfb1a733488881c4b1fb4dfff,
+        type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2f1f36798430e6642a2ed07d50a1f13d, type: 2}
     - target: {fileID: 919132149155446097, guid: a681f8adfb1a733488881c4b1fb4dfff,
         type: 3}
       propertyPath: m_Name
@@ -6658,6 +6657,7 @@ MonoBehaviour:
   modelsParent: {fileID: 1148365549}
   xrOrigin: {fileID: 1117847927}
   alphaController: {fileID: 1159637507}
+  depthMaterial: {fileID: 2100000, guid: 1822b099f6c09434b97c31e70184ff72, type: 2}
   useLightingEstimation: 1
   renderTexture: {fileID: 0}
   m_OcclusionManager: {fileID: 1117847931}
@@ -7207,7 +7207,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetObject: {fileID: 503428099}
-  targetRenderer: {fileID: 503428101}
   alphaSlider: {fileID: 1159637508}
 --- !u!114 &1159637508
 MonoBehaviour:

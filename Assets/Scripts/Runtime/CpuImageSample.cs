@@ -55,6 +55,10 @@ namespace UnityEngine.XR.ARFoundation.Samples
         [SerializeField]
         public AlphaController alphaController;
 
+        [SerializeField]
+        [Tooltip("The material used to shade the raw environment depth info.")]
+        public Material depthMaterial;
+
         public bool useLightingEstimation = true;
 
         public Vector3? mainLightDirection { get; private set; }
@@ -196,8 +200,11 @@ namespace UnityEngine.XR.ARFoundation.Samples
 
             CaptureRawImage(activeObject.name);
             CaptureARImage(activeObject.name);
-            SaveDepthTexture(activeObject.name);
-
+            try
+            {
+                SaveDepthTexture(activeObject.name);
+            }
+            catch { Debug.LogError("Depth Texture Error.");  }
             // Save Render Settings into JSON
             RenderSettingsData settings = new RenderSettingsData
             {
@@ -295,6 +302,52 @@ namespace UnityEngine.XR.ARFoundation.Samples
 
         }
 
+        void SaveDepthTexture(string objectName)
+        {
+            if (m_OcclusionManager == null || m_OcclusionManager.environmentDepthTexture == null)
+            {
+                Debug.LogError("No environment depth texture available to save.");
+                return;
+            }
+
+            // Get the depth texture
+            Texture2D depthTexture = m_OcclusionManager.environmentDepthTexture;
+
+            // Create a new Texture2D with same dimensions and format
+            RenderTexture renderTexture = RenderTexture.GetTemporary(depthTexture.width, depthTexture.height, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(depthTexture, renderTexture, depthMaterial);
+
+            Texture2D readableTexture = new Texture2D(depthTexture.width, depthTexture.height, TextureFormat.RGBA32, false);
+            RenderTexture.active = renderTexture;
+            readableTexture.ReadPixels(new Rect(0, 0, depthTexture.width, depthTexture.height), 0, 0);
+            readableTexture.Apply();
+
+            // Convert to PNG
+            byte[] pngData = readableTexture.EncodeToPNG();
+            if (pngData != null)
+            {
+                string directoryPath = Path.Combine(Application.persistentDataPath, "../files/depth_textures/");
+                if (!Directory.Exists(Path.GetDirectoryName(directoryPath)))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(directoryPath));
+                }
+                // Get all matching files and find the highest index
+                int newIndex = Directory.GetFiles(directoryPath, $"{objectName}_*_depth.png")
+                    .Select(f => Path.GetFileNameWithoutExtension(f).Split('_'))
+                    .Where(parts => parts.Length >= 3 && int.TryParse(parts[1], out _))
+                    .Select(parts => int.Parse(parts[1]))
+                    .DefaultIfEmpty(0)
+                    .Max() + 1;
+                string filePath = Path.Combine(directoryPath, $"{objectName}_{newIndex}_depth.png");
+                File.WriteAllBytes(filePath, pngData);
+                Debug.Log($"Depth texture saved at: {filePath}");
+            }
+            RenderTexture.active = null;
+            RenderTexture.ReleaseTemporary(renderTexture);
+            Destroy(readableTexture);
+        }
+
+        /*
         private void _CaptureRawImage(string cur_time)
         {
             if (!m_CameraManager.TryAcquireLatestCpuImage(out XRCpuImage image))
@@ -335,46 +388,8 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 Debug.LogWarning("Failed to save data to: " + filePath);
                 Debug.LogWarning(e);
             }
-        }
+        }*/
 
-        void SaveDepthTexture(string cur_time)
-        {
-            if (m_OcclusionManager == null || m_OcclusionManager.environmentDepthTexture == null)
-            {
-                Debug.LogError("No environment depth texture available to save.");
-                return;
-            }
-
-            // Get the depth texture
-            Texture2D depthTexture = m_OcclusionManager.environmentDepthTexture;
-
-            // Create a new Texture2D with same dimensions and format
-            RenderTexture renderTexture = RenderTexture.GetTemporary(depthTexture.width, depthTexture.height, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(depthTexture, renderTexture);
-
-            Texture2D readableTexture = new Texture2D(depthTexture.width, depthTexture.height, TextureFormat.RGBA32, false);
-            RenderTexture.active = renderTexture;
-            readableTexture.ReadPixels(new Rect(0, 0, depthTexture.width, depthTexture.height), 0, 0);
-            readableTexture.Apply();
-
-            // Convert to PNG
-            byte[] pngData = readableTexture.EncodeToPNG();
-            if (pngData != null)
-            {
-                string filePath = Path.Combine(Application.persistentDataPath, $"../files/depth_textures/depth_texture_{cur_time}.png");
-                if (!Directory.Exists(Path.GetDirectoryName(filePath)))
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-                }
-                System.IO.File.WriteAllBytes(filePath, pngData);
-                Debug.Log($"Depth texture saved at: {filePath}");
-            }
-
-            // Cleanup
-            RenderTexture.active = null;
-            RenderTexture.ReleaseTemporary(renderTexture);
-            Destroy(readableTexture);
-        }
 
 
         /* //don't use this function 
@@ -464,9 +479,10 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 }
             }
 
+            // These functions only update UI elements, not needed in our case.
             //UpdateDepthImage(m_OcclusionManager.TryAcquireHumanDepthCpuImage, m_RawHumanDepthImage);
             //UpdateDepthImage(m_OcclusionManager.TryAcquireHumanStencilCpuImage, m_RawHumanStencilImage);
-            UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthCpuImage, m_RawEnvironmentDepthImage);
+            //UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthCpuImage, m_RawEnvironmentDepthImage);
             //UpdateDepthImage(m_OcclusionManager.TryAcquireEnvironmentDepthConfidenceCpuImage, m_RawEnvironmentDepthConfidenceImage);
         }
 
