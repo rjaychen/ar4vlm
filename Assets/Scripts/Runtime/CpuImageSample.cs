@@ -212,6 +212,8 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 sessionOriginPos = originPos,
                 cameraPos = cameraPos,
                 cameraRot = cameraRot,
+                objectPos = activeObject.transform.position,
+                objectRot = activeObject.transform.rotation,
                 opacity = alphaController.alphaSlider.value,
                 resolution = m_CameraManager.currentConfiguration.ToString(),
                 virtualLightDirection = m_Light.transform.rotation,
@@ -220,17 +222,12 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 brightness = m_Light.intensity,
             };
             settings.SaveRenderSettings(activeObject.name);
+        }
 
-            //TODO: save transparency, scale, camera pose, 
-            /*
-            try
-            {
-                var acceleration = Accelerometer.current.acceleration.ReadValue();
-                var angularVelocity = UnityEngine.InputSystem.Gyroscope.current.angularVelocity.ReadValue();
-                var magneticField = MagneticFieldSensor.current.magneticField.ReadValue();
-            }
-            catch { }
-            */
+
+        unsafe public void CaptureImageAfterDelay()
+        {
+            Invoke("CaptureImage", 5.0f);
         }
 
         private void CaptureRawImage(string objectName)
@@ -251,13 +248,13 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 Directory.CreateDirectory(Path.GetDirectoryName(directoryPath));
             }
             // Get all matching files and find the highest index
-            int newIndex = Directory.GetFiles(directoryPath, $"{objectName}_*_raw.png")
+            int newIndex = Directory.GetFiles(directoryPath, $"android_{objectName}_*_raw.png")
                 .Select(f => Path.GetFileNameWithoutExtension(f).Split('_'))
-                .Where(parts => parts.Length >= 3 && int.TryParse(parts[1], out _))
-                .Select(parts => int.Parse(parts[1]))
+                .Where(parts => parts.Length >= 4 && int.TryParse(parts[2], out _))
+                .Select(parts => int.Parse(parts[2]))
                 .DefaultIfEmpty(0)
                 .Max() + 1;
-            string filePath = Path.Combine(directoryPath, $"{objectName}_{newIndex}_raw.png");
+            string filePath = Path.Combine(directoryPath, $"android_{objectName}_{newIndex}_raw.png");
 
             File.WriteAllBytes(filePath, screenTexture.EncodeToPNG());
             Debug.Log($"Raw scene image saved at: {filePath}");
@@ -284,13 +281,13 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 Directory.CreateDirectory(Path.GetDirectoryName(directoryPath));
             }
             // Get all matching files and find the highest index
-            int newIndex = Directory.GetFiles(directoryPath, $"{objectName}_*_ar.png")
+            int newIndex = Directory.GetFiles(directoryPath, $"android_{objectName}_*_ar.png")
                 .Select(f => Path.GetFileNameWithoutExtension(f).Split('_'))
-                .Where(parts => parts.Length >= 3 && int.TryParse(parts[1], out _))
-                .Select(parts => int.Parse(parts[1]))
+                .Where(parts => parts.Length >= 4 && int.TryParse(parts[2], out _))
+                .Select(parts => int.Parse(parts[2]))
                 .DefaultIfEmpty(0)
                 .Max() + 1;
-            string filePath = Path.Combine(directoryPath, $"{objectName}_{newIndex}_ar.png");
+            string filePath = Path.Combine(directoryPath, $"android_{objectName}_{newIndex}_ar.png");
 
             File.WriteAllBytes(filePath, screenTexture.EncodeToPNG());
             Debug.Log($"AR scene image saved at: {filePath}");
@@ -332,13 +329,13 @@ namespace UnityEngine.XR.ARFoundation.Samples
                     Directory.CreateDirectory(Path.GetDirectoryName(directoryPath));
                 }
                 // Get all matching files and find the highest index
-                int newIndex = Directory.GetFiles(directoryPath, $"{objectName}_*_depth.png")
+                int newIndex = Directory.GetFiles(directoryPath, $"android_{objectName}_*_depth.png")
                     .Select(f => Path.GetFileNameWithoutExtension(f).Split('_'))
-                    .Where(parts => parts.Length >= 3 && int.TryParse(parts[1], out _))
-                    .Select(parts => int.Parse(parts[1]))
+                    .Where(parts => parts.Length >= 4 && int.TryParse(parts[2], out _))
+                    .Select(parts => int.Parse(parts[2]))
                     .DefaultIfEmpty(0)
                     .Max() + 1;
-                string filePath = Path.Combine(directoryPath, $"{objectName}_{newIndex}_depth.png");
+                string filePath = Path.Combine(directoryPath, $"android_{objectName}_{newIndex}_depth.png");
                 File.WriteAllBytes(filePath, pngData);
                 Debug.Log($"Depth texture saved at: {filePath}");
             }
